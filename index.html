@@ -60,6 +60,11 @@
         <button id="openDdaySettingsBtn" class="icon-btn" onclick="openDdayModal()" title="D-Day 날짜 설정">
           <i class="fa-solid fa-sliders"></i>
         </button>
+
+        <!-- 전체 데이터 비우기 버튼 -->
+        <button id="clearAllDataBtn" class="icon-btn" onclick="clearAllData()" title="모든 일정 및 메모 비우기">
+          <i class="fa-regular fa-trash-can"></i>
+        </button>
       </div>
     </header>
 
@@ -75,17 +80,18 @@
       </button>
     </div>
 
-    <!-- D-Day 대시보드 섹션 -->
+    <!-- D-Day 대시보드 섹션 (각 칸 클릭 시 개별 설정) -->
     <section class="dday-section">
       <!-- 전역일 D-Day 카드 -->
-      <div class="dday-card military-dday-card">
+      <div class="dday-card military-dday-card clickable-card" onclick="openSingleDdayModal('discharge')" title="클릭하여 군복무일 설정">
+          <button class="add-more-btn" onclick="event.stopPropagation(); openAddScheduleModalForType('unit');" title="추가 일정 등록"><i class="fa-solid fa-plus"></i></button>
         <div class="card-header">
           <span class="card-icon">🎖️</span>
-          <span class="card-title" id="dischargeTitle">국방부 시계 (전역일)</span>
-          <span class="dday-badge" id="dischargeBadge">D-Day 계산중</span>
+          <span class="card-title" id="dischargeTitle">군복무일 (전역일)</span>
+          <span class="dday-badge" id="dischargeBadge">미등록</span>
         </div>
         <div class="card-body">
-          <div class="dday-count" id="dischargeDays">D-000</div>
+          <div class="dday-count" id="dischargeDays">미등록</div>
           <div class="progress-info">
             <span class="progress-label">복무 달성률</span>
             <span class="progress-percent" id="dischargePercent">0.0%</span>
@@ -93,35 +99,55 @@
           <div class="progress-bar-bg">
             <div class="progress-bar-fill" id="dischargeProgressBar" style="width: 0%"></div>
           </div>
-          <div class="dday-subtext" id="dischargeDates">입대일: 2026.03.01 ~ 전역일: 2027.08.31</div>
+          <div class="dday-subtext" id="dischargeDates">클릭하여 복무 기간(입대일~전역일)을 설정하세요</div>
         </div>
       </div>
 
       <!-- 다음 휴가 D-Day 카드 -->
-      <div class="dday-card vacation-dday-card">
+      <div class="dday-card vacation-dday-card clickable-card" onclick="openSingleDdayModal('vacation')" title="클릭하여 휴가 및 잔여 일수 설정">
+          <button class="add-more-btn" onclick="event.stopPropagation(); openAddScheduleModalForType('vacation');" title="추가 일정 등록"><i class="fa-solid fa-plus"></i></button>
         <div class="card-header">
           <span class="card-icon">🏖️</span>
-          <span class="card-title" id="vacationTitle">다음 정기 휴가</span>
-          <span class="dday-badge badge-blue" id="vacationBadge">휴가 카운트</span>
+          <span class="card-title" id="vacationTitle">휴가 일정</span>
+          <span class="dday-badge badge-blue" id="vacationBadge">미등록</span>
         </div>
         <div class="card-body">
-          <div class="dday-count text-blue" id="vacationDays">D-10</div>
-          <p class="card-desc" id="vacationDesc">목표: 3박 4일 포상 & 정기휴가</p>
-          <div class="dday-subtext" id="vacationDates">예정일: 2026.12.05</div>
+          <div class="dday-count text-blue" id="vacationDays">일정 없음</div>
+          <p class="card-desc" id="vacationDesc">등록된 휴가가 없습니다</p>
+          <div class="vacation-remain-row" id="vacationRemainRow">
+            <span class="remain-text" id="vacationRemainText">남은 휴가: 미설정</span>
+            <button type="button" class="vac-mini-btn" id="quickUseVacBtn" onclick="event.stopPropagation(); useVacationDays(1)" style="display: none;" title="사용한 휴가 +1일 (남은 휴가 1일 차감)">
+              -1일 사용
+            </button>
+          </div>
+          <div class="dday-subtext" id="vacationDates">클릭하여 휴가 일정 및 잔여 일수를 설정하세요</div>
         </div>
       </div>
 
       <!-- 주요 훈련 D-Day 카드 -->
-      <div class="dday-card training-dday-card">
+      <div class="dday-card training-dday-card clickable-card" onclick="openSingleDdayModal('training')" title="클릭하여 부대 훈련 설정">
+          <button class="add-more-btn" onclick="event.stopPropagation(); openAddScheduleModalForType('training');" title="추가 일정 등록"><i class="fa-solid fa-plus"></i></button>
         <div class="card-header">
           <span class="card-icon">🎯</span>
-          <span class="card-title" id="trainingTitle">부대 주요 훈련</span>
-          <span class="dday-badge badge-orange" id="trainingBadge">작전 카운트</span>
+          <span class="card-title" id="trainingTitle">부대 훈련</span>
+          <span class="dday-badge badge-orange" id="trainingBadge">미등록</span>
         </div>
         <div class="card-body">
-          <div class="dday-count text-orange" id="trainingDays">D-3</div>
-          <p class="card-desc" id="trainingDesc">대대 전술종합평가 훈련</p>
-          <div class="dday-subtext" id="trainingDates">예정일: 2026.11.28</div>
+          <div class="dday-count text-orange" id="trainingDays">일정 없음</div>
+          <p class="card-desc" id="trainingDesc">등록된 훈련이 없습니다</p>
+          <div class="dday-subtext" id="trainingDates">클릭하여 훈련 등록 여부를 선택하세요</div>
+        </div>
+      </div>
+
+      <!-- 사용자가 추가로 등록한 D-Day 카드들이 들어갈 영역 -->
+      <div id="customDdaysContainer" style="display: contents;"></div>
+
+      <!-- 새 D-Day 일정 추가 카드 -->
+      <div class="dday-card add-dday-card clickable-card" onclick="openSingleDdayModal('custom')" title="클릭하여 새 D-Day 일정 추가">
+        <div class="add-dday-inner">
+          <div class="add-dday-icon"><i class="fa-solid fa-plus"></i></div>
+          <div class="add-dday-label">새 D-Day 일정 추가</div>
+          <div class="add-dday-sub">외출, 면회, 자격증 등 자유롭게 등록</div>
         </div>
       </div>
     </section>
@@ -408,53 +434,83 @@
     </div>
   </div>
 
-  <!-- ================= 모달 3: D-Day 설정 모달 ================= -->
+  <!-- ================= 모달 3: 개별 D-Day 설정 모달 ================= -->
   <div id="ddayConfigModal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-sliders"></i> D-Day 날짜 설정</h3>
+        <h3 id="singleDdayModalTitle"><i class="fa-solid fa-sliders"></i> D-Day 설정</h3>
         <button class="modal-close-btn" id="closeDdayConfigModalBtn"
           onclick="closeModal('ddayConfigModal')">&times;</button>
       </div>
-      <form id="ddayConfigForm" onsubmit="handleSaveDdayConfig(event)">
+      <form id="ddayConfigForm" onsubmit="handleSaveSingleDday(event)">
         <div class="modal-body">
-          <h4 class="sub-heading">🎖️ 전역일 (국방부 시계) 설정</h4>
-          <div class="form-row-2">
-            <div class="input-group">
-              <label for="cfgEnlistDate">입대일</label>
-              <input type="date" id="cfgEnlistDate" required>
+          <input type="hidden" id="singleDdayType" value="discharge">
+          <input type="hidden" id="singleDdayCustomId" value="">
+
+          <!-- 잔여 휴가 일수 관리 (휴가 클릭 시에만 표시) -->
+          <div id="vacationBalanceSection" class="vac-balance-box" style="display: none;">
+            <div class="vac-balance-header">
+              <span>🏖️ 남은 휴가 일수 관리</span>
+              <span class="vac-remain-pill" id="vacRemainingPreview">남은 휴가: 미설정</span>
             </div>
-            <div class="input-group">
-              <label for="cfgDischargeDate">전역일</label>
-              <input type="date" id="cfgDischargeDate" required>
+            <div class="form-row-2">
+              <div class="input-group" style="margin-bottom: 6px;">
+                <label for="vacTotalDays">총 보유 휴가 (일)</label>
+                <input type="number" id="vacTotalDays" min="0" max="365" placeholder="예: 24" oninput="updateVacBalancePreview()">
+              </div>
+              <div class="input-group" style="margin-bottom: 6px;">
+                <label for="vacUsedDays">사용한 휴가 (일)</label>
+                <div class="vac-used-control">
+                  <button type="button" class="vac-step-btn" onclick="adjustVacUsed(-1)">-</button>
+                  <input type="number" id="vacUsedDays" min="0" max="365" value="0" oninput="updateVacBalancePreview()">
+                  <button type="button" class="vac-step-btn" onclick="adjustVacUsed(1)">+</button>
+                </div>
+              </div>
             </div>
+            <small class="help-text">총 휴가에서 사용한 일수만큼 자동으로 차감됩니다.</small>
           </div>
 
-          <h4 class="sub-heading mt-4">🏖️ 다음 휴가 설정</h4>
-          <div class="form-row-2">
-            <div class="input-group">
-              <label for="cfgVacationTitle">휴가 명칭</label>
-              <input type="text" id="cfgVacationTitle" placeholder="예: 1차 정기휴가">
-            </div>
-            <div class="input-group">
-              <label for="cfgVacationDate">휴가 시작일</label>
-              <input type="date" id="cfgVacationDate">
-            </div>
+          <!-- 등록 여부 선택 스위치 -->
+          <div class="dday-enable-box">
+            <label class="toggle-label" for="singleDdayEnabled">
+              <input type="checkbox" id="singleDdayEnabled" onchange="toggleDdayInputs()">
+              <span class="toggle-text">이 일정을 등록하고 D-Day 표시하기</span>
+            </label>
+            <small class="help-text">체크를 해제하고 저장하면 '일정 없음(미등록)' 상태로 표시됩니다.</small>
           </div>
 
-          <h4 class="sub-heading mt-4">🎯 주요 훈련 설정</h4>
-          <div class="form-row-2">
-            <div class="input-group">
-              <label for="cfgTrainingTitle">훈련 명칭</label>
-              <input type="text" id="cfgTrainingTitle" placeholder="예: 혹한기 훈련">
+          <div id="singleDdayFieldsWrap">
+            <div class="input-group" id="singleDdayTitleGroup">
+              <label for="singleDdayName" id="singleDdayNameLabel">일정 이름</label>
+              <input type="text" id="singleDdayName" placeholder="예: 1차 정기휴가 / 혹한기 훈련" maxlength="30">
             </div>
-            <div class="input-group">
-              <label for="cfgTrainingDate">훈련 시작일</label>
-              <input type="date" id="cfgTrainingDate">
+
+            <div class="form-row-2">
+              <div class="input-group">
+                <label for="singleDdayStart" id="singleDdayStartLabel">시작일 <span class="req">*</span></label>
+                <input type="date" id="singleDdayStart">
+              </div>
+              <div class="input-group">
+                <label for="singleDdayEnd" id="singleDdayEndLabel">종료일 <span class="req">*</span></label>
+                <input type="date" id="singleDdayEnd">
+              </div>
+            </div>
+
+            <div class="input-group" id="singleDdayDescGroup">
+              <label for="singleDdayDesc">간단 메모 (선택)</label>
+              <input type="text" id="singleDdayDesc" placeholder="예: 3박 4일 포상휴가 / 준비물 확인" maxlength="40">
+            </div>
+
+            <div id="vacPeriodApplyWrap" style="display: none; margin-top: 8px;">
+              <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 12px;" onclick="applyVacPeriodToUsed()">
+                <i class="fa-solid fa-calculator"></i> 입력한 휴가 기간만큼 사용한 휴가에 더하기
+              </button>
             </div>
           </div>
         </div>
         <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="deleteCustomDdayBtn" style="display: none; color: #f87171; border-color: rgba(239,68,68,0.4); margin-right: auto;"
+            onclick="deleteCustomDday()"><i class="fa-regular fa-trash-can"></i> 삭제</button>
           <button type="button" class="btn btn-secondary" id="cancelDdayConfigBtn"
             onclick="closeModal('ddayConfigModal')">닫기</button>
           <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> 저장하기</button>

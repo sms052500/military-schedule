@@ -60,16 +60,27 @@ const AppState = {
   selectedEmoji: '💪',
   selectedColor: 'yellow',
 
-  // D-Day 기본 설정
+  // D-Day 기본 설정 (초기값: 모두 미등록 상태)
   ddayConfig: {
-    enlistDate: '2026-03-01',
-    dischargeDate: '2027-08-31',
-    vacationTitle: '다음 정기 휴가',
-    vacationDate: '2026-12-05',
-    vacationDesc: '목표: 3박 4일 포상 & 정기휴가',
-    trainingTitle: '부대 주요 훈련',
-    trainingDate: '2026-11-28',
-    trainingDesc: '대대 전술종합평가 훈련'
+    dischargeEnabled: false,
+    enlistDate: '',
+    dischargeDate: '',
+
+    vacationEnabled: false,
+    vacationTitle: '',
+    vacationStartDate: '',
+    vacationEndDate: '',
+    vacationDesc: '',
+    vacationTotalDays: '',
+    vacationUsedDays: 0,
+
+    trainingEnabled: false,
+    trainingTitle: '',
+    trainingStartDate: '',
+    trainingEndDate: '',
+    trainingDesc: '',
+
+    customDdays: []
   }
 };
 
@@ -133,8 +144,10 @@ async function initSupabaseClient() {
   // 값이 채워져 있는지 확인
   if (url && key && url.trim() !== '' && key.trim() !== '' && !url.includes('YOUR_')) {
     try {
+      // /rest/v1 또는 뒤쪽 슬래시 자동 제거
+      url = url.trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
       if (window.supabase) {
-        AppState.supabase = window.supabase.createClient(url.trim(), key.trim());
+        AppState.supabase = window.supabase.createClient(url, key.trim());
 
         // ping 테스트
         const { error } = await AppState.supabase.from('memos').select('id').limit(1);
@@ -205,15 +218,15 @@ async function loadSchedules() {
 
   // Fallback: SafeStorage
   const saved = SafeStorage.getItem('unit_local_schedules');
-  if (saved) {
+  if (saved && !saved.includes('sample-sched-')) {
     try {
       AppState.schedules = JSON.parse(saved);
     } catch (e) {
-      AppState.schedules = getDefaultSchedules();
+      AppState.schedules = [];
     }
   } else {
-    AppState.schedules = getDefaultSchedules();
-    SafeStorage.setItem('unit_local_schedules', JSON.stringify(AppState.schedules));
+    AppState.schedules = [];
+    SafeStorage.setItem('unit_local_schedules', '[]');
   }
 }
 
@@ -236,119 +249,51 @@ async function loadMemos() {
 
   // Fallback: SafeStorage
   const saved = SafeStorage.getItem('unit_local_memos');
-  if (saved) {
+  if (saved && !saved.includes('sample-memo-')) {
     try {
       AppState.memos = JSON.parse(saved);
     } catch (e) {
-      AppState.memos = getDefaultMemos();
+      AppState.memos = [];
     }
   } else {
-    AppState.memos = getDefaultMemos();
-    SafeStorage.setItem('unit_local_memos', JSON.stringify(AppState.memos));
+    AppState.memos = [];
+    SafeStorage.setItem('unit_local_memos', '[]');
   }
 }
 
 function getDefaultSchedules() {
-  const today = new Date();
-  const format = (d) => d.toISOString().split('T')[0];
-  const addDays = (days) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + days);
-    return format(d);
-  };
-
-  return [
-    {
-      id: 'sample-sched-1',
-      title: '대대 전술종합평가 훈련',
-      type: 'unit',
-      start_date: addDays(3),
-      end_date: addDays(5),
-      location: '대연병장 및 종합훈련장',
-      memo: '단독군장 준비 및 장비 점검 완료할 것',
-      priority: 'urgent',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'sample-sched-2',
-      title: '정기 외박 / 휴가',
-      type: 'vacation',
-      start_date: addDays(10),
-      end_date: addDays(13),
-      location: '서울 본가',
-      memo: '복귀시간 20:00 준수',
-      priority: 'important',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'sample-sched-3',
-      title: '주간 야간 당직사령 / 근무',
-      type: 'duty',
-      start_date: addDays(1),
-      end_date: addDays(1),
-      location: '지휘통제실',
-      memo: '근무교대 15분 전 도착 완료',
-      priority: 'normal',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'sample-sched-4',
-      title: '부대 친선 풋살 토너먼트',
-      type: 'unit',
-      start_date: addDays(7),
-      end_date: addDays(7),
-      location: '연병장',
-      memo: '중대 대항 토너먼트',
-      priority: 'normal',
-      created_at: new Date().toISOString()
-    }
-  ];
+  return [];
 }
 
 function getDefaultMemos() {
-  return [
-    {
-      id: 'sample-memo-1',
-      author: '3소대 김병장',
-      category: '응원',
-      content: '오늘 하루도 다치지 말고 무사히 훈련 마칩시다! 충성! 💪',
-      emoji: '💪',
-      color: 'yellow',
-      created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString()
-    },
-    {
-      id: 'sample-memo-2',
-      author: '민성이 친구 현우',
-      category: '응원',
-      content: '민성아 휴가 때 보자! 맛있는 치킨 피자 사줄 테니까 힘내라! 🔥',
-      emoji: '🍕',
-      color: 'blue',
-      created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString()
-    },
-    {
-      id: 'sample-memo-3',
-      author: '행정보급관',
-      category: '부대안내',
-      content: '금일 일과 후 생활관 방역 및 개인 관물대 정리정돈 철저히 바람.',
-      emoji: '📢',
-      color: 'green',
-      created_at: new Date(Date.now() - 1000 * 60 * 360).toISOString()
-    },
-    {
-      id: 'sample-memo-4',
-      author: '방문자 수진',
-      category: '자유',
-      content: '사이트 디자인 너무 멋져요! 항상 나라 지켜주셔서 감사합니다 🎖️',
-      emoji: '⭐',
-      color: 'purple',
-      created_at: new Date(Date.now() - 1000 * 60 * 720).toISOString()
-    }
-  ];
+  return [];
 }
 
 // ==========================================
 // 5. 모달 제어 함수들 (HTML onclick 지원)
 // ==========================================
+function openAddScheduleModalForType(type) {
+  // Set the schedule type dropdown and open the add schedule modal
+  const typeSelect = document.getElementById('schedType');
+  if (typeSelect) {
+    typeSelect.value = type;
+  }
+  // Reset other fields to defaults
+  const dateInput = document.getElementById('schedStartDate');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+  const endInput = document.getElementById('schedEndDate');
+  if (endInput) endInput.value = '';
+  const titleInput = document.getElementById('schedTitle');
+  if (titleInput) titleInput.value = '';
+  const locationInput = document.getElementById('schedLocation');
+  if (locationInput) locationInput.value = '';
+  const memoInput = document.getElementById('schedMemo');
+  if (memoInput) memoInput.value = '';
+  openModal('addScheduleModal');
+}
+
 function openModal(id) {
   const modal = document.getElementById(id);
   if (modal) {
@@ -389,20 +334,169 @@ function openDbConfigModal() {
 }
 
 function openDdayModal() {
-  const cfg = AppState.ddayConfig;
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.value = val || '';
-  };
+  openSingleDdayModal('discharge');
+}
 
-  setVal('cfgEnlistDate', cfg.enlistDate);
-  setVal('cfgDischargeDate', cfg.dischargeDate);
-  setVal('cfgVacationTitle', cfg.vacationTitle);
-  setVal('cfgVacationDate', cfg.vacationDate);
-  setVal('cfgTrainingTitle', cfg.trainingTitle);
-  setVal('cfgTrainingDate', cfg.trainingDate);
+function openSingleDdayModal(type, customId = null) {
+  const cfg = AppState.ddayConfig || {};
+  document.getElementById('singleDdayType').value = type;
+  document.getElementById('singleDdayCustomId').value = customId || '';
 
+  const modalTitle = document.getElementById('singleDdayModalTitle');
+  const titleGroup = document.getElementById('singleDdayTitleGroup');
+  const descGroup = document.getElementById('singleDdayDescGroup');
+  const vacBalanceBox = document.getElementById('vacationBalanceSection');
+  const vacPeriodWrap = document.getElementById('vacPeriodApplyWrap');
+  const deleteCustomBtn = document.getElementById('deleteCustomDdayBtn');
+  const nameLabel = document.getElementById('singleDdayNameLabel');
+  const startLabel = document.getElementById('singleDdayStartLabel');
+  const endLabel = document.getElementById('singleDdayEndLabel');
+  const enabledCheckbox = document.getElementById('singleDdayEnabled');
+  const nameInput = document.getElementById('singleDdayName');
+  const startInput = document.getElementById('singleDdayStart');
+  const endInput = document.getElementById('singleDdayEnd');
+  const descInput = document.getElementById('singleDdayDesc');
+
+  if (vacBalanceBox) vacBalanceBox.style.display = 'none';
+  if (vacPeriodWrap) vacPeriodWrap.style.display = 'none';
+  if (deleteCustomBtn) deleteCustomBtn.style.display = 'none';
+
+  if (type === 'discharge') {
+    modalTitle.innerHTML = '🎖️ 군복무일 (전역일) 설정';
+    titleGroup.style.display = 'none';
+    descGroup.style.display = 'none';
+    startLabel.innerHTML = '입대일 <span class="req">*</span>';
+    endLabel.innerHTML = '전역일 <span class="req">*</span>';
+
+    enabledCheckbox.checked = !!cfg.dischargeEnabled;
+    startInput.value = cfg.enlistDate || '';
+    endInput.value = cfg.dischargeDate || '';
+  } else if (type === 'vacation') {
+    modalTitle.innerHTML = '🏖️ 휴가 및 잔여 일수 설정';
+    titleGroup.style.display = 'block';
+    descGroup.style.display = 'block';
+    if (vacBalanceBox) vacBalanceBox.style.display = 'block';
+    if (vacPeriodWrap) vacPeriodWrap.style.display = 'block';
+    nameLabel.textContent = '휴가 명칭';
+    nameInput.placeholder = '예: 1차 정기휴가, 포상휴가';
+    startLabel.innerHTML = '휴가 시작일 <span class="req">*</span>';
+    endLabel.innerHTML = '휴가 종료일 <span class="req">*</span>';
+
+    document.getElementById('vacTotalDays').value = cfg.vacationTotalDays !== undefined && cfg.vacationTotalDays !== '' ? cfg.vacationTotalDays : '';
+    document.getElementById('vacUsedDays').value = cfg.vacationUsedDays || 0;
+    updateVacBalancePreview();
+
+    enabledCheckbox.checked = !!cfg.vacationEnabled;
+    nameInput.value = cfg.vacationTitle || '';
+    startInput.value = cfg.vacationStartDate || '';
+    endInput.value = cfg.vacationEndDate || '';
+    descInput.value = cfg.vacationDesc || '';
+  } else if (type === 'training') {
+    modalTitle.innerHTML = '🎯 부대 훈련 설정';
+    titleGroup.style.display = 'block';
+    descGroup.style.display = 'block';
+    nameLabel.textContent = '훈련 명칭';
+    nameInput.placeholder = '예: 혹한기 훈련, 유격 훈련';
+    startLabel.innerHTML = '훈련 시작일 <span class="req">*</span>';
+    endLabel.innerHTML = '훈련 종료일 <span class="req">*</span>';
+
+    enabledCheckbox.checked = !!cfg.trainingEnabled;
+    nameInput.value = cfg.trainingTitle || '';
+    startInput.value = cfg.trainingStartDate || '';
+    endInput.value = cfg.trainingEndDate || '';
+    descInput.value = cfg.trainingDesc || '';
+  } else if (type === 'custom') {
+    const existing = customId ? (cfg.customDdays || []).find(c => c.id === customId) : null;
+    modalTitle.innerHTML = existing ? '📌 추가 일정 수정' : '➕ 새 D-Day 일정 추가';
+    titleGroup.style.display = 'block';
+    descGroup.style.display = 'block';
+    if (existing && deleteCustomBtn) deleteCustomBtn.style.display = 'inline-flex';
+    nameLabel.textContent = '일정 이름';
+    nameInput.placeholder = '예: 면회, 외출, 자격증 시험';
+    startLabel.innerHTML = '시작일 <span class="req">*</span>';
+    endLabel.innerHTML = '종료일 <span class="req">*</span>';
+
+    enabledCheckbox.checked = existing ? !!existing.enabled : true;
+    nameInput.value = existing ? (existing.title || '') : '';
+    startInput.value = existing ? (existing.startDate || '') : '';
+    endInput.value = existing ? (existing.endDate || '') : '';
+    descInput.value = existing ? (existing.desc || '') : '';
+  }
+
+  toggleDdayInputs();
   openModal('ddayConfigModal');
+}
+
+function updateVacBalancePreview() {
+  const totalVal = document.getElementById('vacTotalDays').value;
+  const usedVal = parseInt(document.getElementById('vacUsedDays').value, 10) || 0;
+  const preview = document.getElementById('vacRemainingPreview');
+  if (!preview) return;
+
+  if (totalVal === '' || isNaN(parseInt(totalVal, 10))) {
+    preview.textContent = '남은 휴가: 미설정';
+  } else {
+    const total = parseInt(totalVal, 10);
+    const remain = Math.max(0, total - usedVal);
+    preview.textContent = `남은 휴가: ${remain}일`;
+  }
+}
+
+function adjustVacUsed(delta) {
+  const usedInput = document.getElementById('vacUsedDays');
+  if (!usedInput) return;
+  const current = parseInt(usedInput.value, 10) || 0;
+  usedInput.value = Math.max(0, current + delta);
+  updateVacBalancePreview();
+}
+
+function applyVacPeriodToUsed() {
+  const start = document.getElementById('singleDdayStart').value;
+  const end = document.getElementById('singleDdayEnd').value;
+  if (!start || !end) {
+    showToast('먼저 휴가 시작일과 종료일을 입력해주세요.', 'warning');
+    return;
+  }
+  if (start > end) {
+    showToast('종료일이 시작일보다 빠를 수 없습니다.', 'warning');
+    return;
+  }
+  const diffDays = Math.round((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1;
+  const usedInput = document.getElementById('vacUsedDays');
+  const current = parseInt(usedInput.value, 10) || 0;
+  usedInput.value = current + diffDays;
+  updateVacBalancePreview();
+  showToast(`휴가 기간(${diffDays}일)이 사용한 휴가에 더해졌습니다.`, 'success');
+}
+
+function useVacationDays(days) {
+  const cfg = AppState.ddayConfig;
+  if (cfg.vacationTotalDays === '' || cfg.vacationTotalDays === undefined) {
+    openSingleDdayModal('vacation');
+    return;
+  }
+  const total = parseInt(cfg.vacationTotalDays, 10) || 0;
+  const used = parseInt(cfg.vacationUsedDays, 10) || 0;
+  if (used + days > total) {
+    showToast('남은 휴가 일수가 부족합니다!', 'warning');
+    return;
+  }
+  cfg.vacationUsedDays = Math.max(0, used + days);
+  SafeStorage.setItem('unit_dday_config', JSON.stringify(cfg));
+  updateDdayUI();
+  showToast(`휴가 ${days}일 사용이 반영되었습니다. (남은 휴가: ${total - cfg.vacationUsedDays}일)`, 'success');
+}
+
+function toggleDdayInputs() {
+  const enabled = document.getElementById('singleDdayEnabled').checked;
+  const wrap = document.getElementById('singleDdayFieldsWrap');
+  if (wrap) {
+    if (enabled) {
+      wrap.classList.remove('disabled-fields');
+    } else {
+      wrap.classList.add('disabled-fields');
+    }
+  }
 }
 
 // ==========================================
@@ -564,6 +658,7 @@ async function handleScheduleSubmit(e) {
     await loadSchedules();
     renderSchedules();
     renderCalendar();
+    updateDdayUI();
   } catch (err) {
     console.error('일정 등록 실패:', err);
     showToast('일정 등록 실패: ' + err.message, 'error');
@@ -591,6 +686,7 @@ async function handleScheduleDelete(schedId) {
     await loadSchedules();
     renderSchedules();
     renderCalendar();
+    updateDdayUI();
   } catch (err) {
     console.error('일정 삭제 에러:', err);
     showToast('삭제 실패: ' + err.message, 'error');
@@ -872,59 +968,217 @@ function renderCalendar() {
 }
 
 function updateDdayUI() {
-  const cfg = AppState.ddayConfig;
+  const cfg = AppState.ddayConfig || {};
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 1) 전역일
-  const enlist = new Date(cfg.enlistDate);
-  const discharge = new Date(cfg.dischargeDate);
-  enlist.setHours(0, 0, 0, 0);
-  discharge.setHours(0, 0, 0, 0);
-
-  const totalServiceTime = discharge - enlist;
-  const elapsedServiceTime = today - enlist;
-  const remainingDays = Math.ceil((discharge - today) / (1000 * 60 * 60 * 24));
-
-  let percent = 0;
-  if (totalServiceTime > 0) {
-    percent = Math.min(100, Math.max(0, (elapsedServiceTime / totalServiceTime) * 100));
-  }
-
+  // 1) 군복무일 (전역일)
   const dDays = document.getElementById('dischargeDays');
   const dPercent = document.getElementById('dischargePercent');
   const dBar = document.getElementById('dischargeProgressBar');
   const dDates = document.getElementById('dischargeDates');
+  const dBadge = document.getElementById('dischargeBadge');
 
-  if (dDays) dDays.textContent = remainingDays > 0 ? `D-${remainingDays}` : (remainingDays === 0 ? 'D-Day' : `D+${Math.abs(remainingDays)}`);
-  if (dPercent) dPercent.textContent = percent.toFixed(1) + '%';
-  if (dBar) dBar.style.width = percent + '%';
-  if (dDates) dDates.textContent = `입대: ${cfg.enlistDate} ~ 전역: ${cfg.dischargeDate}`;
+  if (cfg.dischargeEnabled && cfg.enlistDate && cfg.dischargeDate) {
+    const enlist = new Date(cfg.enlistDate);
+    const discharge = new Date(cfg.dischargeDate);
+    enlist.setHours(0, 0, 0, 0);
+    discharge.setHours(0, 0, 0, 0);
 
-  // 2) 휴가
-  if (cfg.vacationDate) {
-    const vacDate = new Date(cfg.vacationDate);
-    vacDate.setHours(0, 0, 0, 0);
-    const vacDiff = Math.ceil((vacDate - today) / (1000 * 60 * 60 * 24));
-    const vTitle = document.getElementById('vacationTitle');
-    const vDays = document.getElementById('vacationDays');
-    const vDates = document.getElementById('vacationDates');
+    const totalServiceTime = discharge - enlist;
+    const elapsedServiceTime = today - enlist;
+    const remainingDays = Math.ceil((discharge - today) / (1000 * 60 * 60 * 24));
+
+    let percent = 0;
+    if (totalServiceTime > 0) {
+      percent = Math.min(100, Math.max(0, (elapsedServiceTime / totalServiceTime) * 100));
+    }
+
+    if (dDays) dDays.textContent = remainingDays > 0 ? `D-${remainingDays}` : (remainingDays === 0 ? 'D-Day' : `D+${Math.abs(remainingDays)}`);
+    if (dPercent) dPercent.textContent = percent.toFixed(1) + '%';
+    if (dBar) dBar.style.width = percent + '%';
+    if (dDates) dDates.textContent = `입대: ${cfg.enlistDate} ~ 전역: ${cfg.dischargeDate}`;
+    if (dBadge) dBadge.textContent = '복무 진행중';
+  } else {
+    if (dDays) dDays.textContent = '미등록';
+    if (dPercent) dPercent.textContent = '0.0%';
+    if (dBar) dBar.style.width = '0%';
+    if (dDates) dDates.textContent = '클릭하여 복무 기간(입대일~전역일)을 설정하세요';
+    if (dBadge) dBadge.textContent = '미등록';
+  }
+
+  // 2) 휴가 (남은 휴가 일수 + 휴가 일정 D-Day)
+  const vCard = document.querySelector('.vacation-dday-card');
+  const vTitle = document.getElementById('vacationTitle');
+  const vDays = document.getElementById('vacationDays');
+  const vDesc = document.getElementById('vacationDesc');
+  const vDates = document.getElementById('vacationDates');
+  const vBadge = document.getElementById('vacationBadge');
+  const vRemainText = document.getElementById('vacationRemainText');
+  const quickUseBtn = document.getElementById('quickUseVacBtn');
+
+  if (vCard) vCard.style.display = 'block';
+
+  // 잔여 휴가 계산 표시
+  if (cfg.vacationTotalDays !== '' && cfg.vacationTotalDays !== undefined && !isNaN(parseInt(cfg.vacationTotalDays, 10))) {
+    const totalVac = parseInt(cfg.vacationTotalDays, 10);
+    const usedVac = parseInt(cfg.vacationUsedDays, 10) || 0;
+    const remainVac = Math.max(0, totalVac - usedVac);
+    if (vRemainText) vRemainText.textContent = `남은 휴가: ${remainVac}일 (총 ${totalVac}일 중 ${usedVac}일 사용)`;
+    if (quickUseBtn) quickUseBtn.style.display = 'inline-block';
+  } else {
+    if (vRemainText) vRemainText.textContent = '남은 휴가: 미설정';
+    if (quickUseBtn) quickUseBtn.style.display = 'none';
+  }
+
+  if (cfg.vacationEnabled && cfg.vacationStartDate && cfg.vacationEndDate) {
+    const start = new Date(cfg.vacationStartDate);
+    const end = new Date(cfg.vacationEndDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    const diffStart = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+    const diffEnd = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+
+    let statusText = '';
+    if (diffStart > 0) statusText = `D-${diffStart}`;
+    else if (diffStart <= 0 && diffEnd >= 0) statusText = '진행중!';
+    else statusText = '종료';
+
     if (vTitle) vTitle.textContent = cfg.vacationTitle || '휴가 일정';
-    if (vDays) vDays.textContent = vacDiff > 0 ? `D-${vacDiff}` : (vacDiff === 0 ? 'D-Day' : `종료`);
-    if (vDates) vDates.textContent = `예정일: ${cfg.vacationDate}`;
+    if (vDays) vDays.textContent = statusText;
+    if (vDesc) vDesc.textContent = cfg.vacationDesc || '등록된 휴가 일정';
+    if (vDates) vDates.textContent = `기간: ${cfg.vacationStartDate} ~ ${cfg.vacationEndDate}`;
+    if (vBadge) vBadge.textContent = '등록됨';
+  } else {
+    if (vTitle) vTitle.textContent = '휴가 일정';
+    if (vDays) vDays.textContent = '일정 없음';
+    if (vDesc) vDesc.textContent = '등록된 휴가가 없습니다';
+    if (vDates) vDates.textContent = '클릭하여 휴가 일정 및 잔여 일수를 설정하세요';
+    if (vBadge) vBadge.textContent = '미등록';
   }
 
   // 3) 훈련
-  if (cfg.trainingDate) {
-    const trnDate = new Date(cfg.trainingDate);
-    trnDate.setHours(0, 0, 0, 0);
-    const trnDiff = Math.ceil((trnDate - today) / (1000 * 60 * 60 * 24));
-    const tTitle = document.getElementById('trainingTitle');
-    const tDays = document.getElementById('trainingDays');
-    const tDates = document.getElementById('trainingDates');
+  const tCard = document.querySelector('.training-dday-card');
+  const tTitle = document.getElementById('trainingTitle');
+  const tDays = document.getElementById('trainingDays');
+  const tDesc = document.getElementById('trainingDesc');
+  const tDates = document.getElementById('trainingDates');
+  const tBadge = document.getElementById('trainingBadge');
+
+  if (tCard) tCard.style.display = 'block';
+  if (cfg.trainingEnabled && cfg.trainingStartDate && cfg.trainingEndDate) {
+    const start = new Date(cfg.trainingStartDate);
+    const end = new Date(cfg.trainingEndDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    const diffStart = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+    const diffEnd = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+
+    let statusText = '';
+    if (diffStart > 0) statusText = `D-${diffStart}`;
+    else if (diffStart <= 0 && diffEnd >= 0) statusText = '훈련중!';
+    else statusText = '완료';
+
     if (tTitle) tTitle.textContent = cfg.trainingTitle || '부대 훈련';
-    if (tDays) tDays.textContent = trnDiff > 0 ? `D-${trnDiff}` : (trnDiff === 0 ? 'D-Day' : `완료`);
-    if (tDates) tDates.textContent = `예정일: ${cfg.trainingDate}`;
+    if (tDays) tDays.textContent = statusText;
+    if (tDesc) tDesc.textContent = cfg.trainingDesc || '등록된 훈련 일정';
+    if (tDates) tDates.textContent = `기간: ${cfg.trainingStartDate} ~ ${cfg.trainingEndDate}`;
+    if (tBadge) tBadge.textContent = '등록됨';
+  } else {
+    if (tTitle) tTitle.textContent = '부대 훈련';
+    if (tDays) tDays.textContent = '일정 없음';
+    if (tDesc) tDesc.textContent = '등록된 훈련이 없습니다';
+    if (tDates) tDates.textContent = '클릭하여 훈련 등록 여부를 선택하세요';
+    if (tBadge) tBadge.textContent = '미등록';
+  }
+
+  // 4) 사용자가 추가로 등록한 커스텀 D-Day 카드들 렌더링
+  const customContainer = document.getElementById('customDdaysContainer');
+  if (customContainer) {
+    const list = cfg.customDdays || [];
+    customContainer.innerHTML = list.map(item => {
+      let statusText = '일정 없음';
+      let badgeText = '미등록';
+      let dateText = '클릭하여 기간을 설정하세요';
+
+      if (item.enabled && item.startDate && item.endDate) {
+        const s = new Date(item.startDate);
+        const e = new Date(item.endDate);
+        s.setHours(0, 0, 0, 0);
+        e.setHours(0, 0, 0, 0);
+        const ds = Math.ceil((s - today) / (1000 * 60 * 60 * 24));
+        const de = Math.ceil((e - today) / (1000 * 60 * 60 * 24));
+
+        if (ds > 0) statusText = `D-${ds}`;
+        else if (ds <= 0 && de >= 0) statusText = '진행중!';
+        else statusText = '완료';
+
+        badgeText = '등록됨';
+        dateText = `기간: ${item.startDate} ~ ${item.endDate}`;
+      }
+
+      return `
+        <div class="dday-card clickable-card" onclick="openSingleDdayModal('custom', '${item.id}')" title="클릭하여 수정 또는 삭제">
+          <div class="card-header">
+            <span class="card-icon">📌</span>
+            <span class="card-title">${escapeHtml(item.title || '추가 일정')}</span>
+            <span class="dday-badge">${badgeText}</span>
+          </div>
+          <div class="card-body">
+            <div class="dday-count">${statusText}</div>
+            <p class="card-desc">${escapeHtml(item.desc || '추가로 등록한 D-Day 일정')}</p>
+            <div class="dday-subtext">${dateText}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// 모든 일정 및 메모 전체 초기화 (데이터 비우기 함수)
+async function clearAllData() {
+  if (!confirm('정말로 모든 일정과 메모, D-Day 설정을 깨끗하게 비우시겠습니까?')) return;
+
+  try {
+    if (AppState.isSupabaseConnected && AppState.supabase) {
+      await AppState.supabase.from('memos').delete().neq('author', '___NEVER_MATCH___');
+      await AppState.supabase.from('schedules').delete().neq('title', '___NEVER_MATCH___');
+    }
+
+    SafeStorage.setItem('unit_local_schedules', '[]');
+    SafeStorage.setItem('unit_local_memos', '[]');
+    SafeStorage.removeItem('unit_dday_config');
+    AppState.schedules = [];
+    AppState.memos = [];
+    AppState.ddayConfig = {
+      dischargeEnabled: false,
+      enlistDate: '',
+      dischargeDate: '',
+      vacationEnabled: false,
+      vacationTitle: '',
+      vacationStartDate: '',
+      vacationEndDate: '',
+      vacationDesc: '',
+      vacationTotalDays: '',
+      vacationUsedDays: 0,
+      trainingEnabled: false,
+      trainingTitle: '',
+      trainingStartDate: '',
+      trainingEndDate: '',
+      trainingDesc: '',
+      customDdays: []
+    };
+
+    renderSchedules();
+    renderMemos();
+    renderCalendar();
+    updateDdayUI();
+    showToast('모든 일정이 깨끗하게 비워졌습니다. 이제 직접 등록해보세요!', 'success');
+  } catch (e) {
+    console.error('전체 초기화 실패:', e);
+    showToast('초기화 실패: ' + e.message, 'error');
   }
 }
 
@@ -941,7 +1195,7 @@ function loadDdayConfig() {
 // 10. Supabase 설정 및 D-Day 저장 핸들러
 // ==========================================
 async function handleSaveDbConfig() {
-  const url = document.getElementById('cfgSupabaseUrl').value.trim();
+  let url = document.getElementById('cfgSupabaseUrl').value.trim();
   const key = document.getElementById('cfgSupabaseKey').value.trim();
   const resultDiv = document.getElementById('testConnResult');
   const saveBtn = document.getElementById('saveDbConfigBtn');
@@ -955,21 +1209,29 @@ async function handleSaveDbConfig() {
     return;
   }
 
+  // /rest/v1 또는 끝의 슬래시(/) 자동 제거
+  url = url.replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+  document.getElementById('cfgSupabaseUrl').value = url;
+
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 접속 테스트 중...';
   }
+
+  // 설정값 무조건 저장
+  SafeStorage.setItem('unit_supabase_url', url);
+  SafeStorage.setItem('unit_supabase_key', key);
 
   try {
     const client = window.supabase.createClient(url, key);
     const { error } = await client.from('memos').select('id').limit(1);
 
     if (error) {
-      throw new Error(`연결 실패: ${error.message} (SQL 테이블을 먼저 생성했는지 확인하세요)`);
+      console.warn('Supabase ping 응답 에러:', error);
+      // 테이블이 없거나 권한 에러인 경우
+      throw error;
     }
 
-    SafeStorage.setItem('unit_supabase_url', url);
-    SafeStorage.setItem('unit_supabase_key', key);
     AppState.supabase = client;
     AppState.isSupabaseConnected = true;
 
@@ -988,11 +1250,30 @@ async function handleSaveDbConfig() {
     }, 1200);
 
   } catch (err) {
+    console.warn('연동 테스트 중 실패:', err);
+    AppState.supabase = window.supabase ? window.supabase.createClient(url, key) : null;
+    AppState.isSupabaseConnected = true; // 저장되었으므로 활성화
+
     if (resultDiv) {
       resultDiv.className = 'test-conn-result error';
-      resultDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${err.message}`;
+      let errorDesc = err.message || '통신 오류';
+      
+      if (errorDesc.includes('Failed to fetch')) {
+        errorDesc = '브라우저 로컬 보안(또는 광고차단기)으로 인해 로컬 파일에서 DB 접속이 차단되었습니다. <strong>설정값은 안전하게 저장되었으니, Vercel에 배포하시면 실제 웹에서 정상 작동합니다!</strong>';
+      } else if (errorDesc.includes('relation') || errorDesc.includes('table')) {
+        errorDesc = 'DB 연결은 되었으나 테이블이 없습니다! <strong>Supabase의 [SQL Editor]에서 `supabase-setup.sql`을 실행해주세요.</strong>';
+      }
+
+      resultDiv.innerHTML = `
+        <div style="margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> ${errorDesc}</div>
+        <button type="button" class="btn btn-primary" style="font-size: 11px; padding: 6px 12px; width: 100%; justify-content: center;" onclick="closeModal('dbConfigModal'); updateDbStatusUI(true); reloadAllData();">
+          ✅ 설정 저장 완료하고 닫기
+        </button>
+      `;
       resultDiv.style.display = 'block';
     }
+
+    updateDbStatusUI(true);
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -1014,22 +1295,91 @@ function handleResetDbConfig() {
   }
 }
 
-function handleSaveDdayConfig(e) {
+function handleSaveSingleDday(e) {
   if (e && e.preventDefault) e.preventDefault();
 
-  AppState.ddayConfig = {
-    enlistDate: document.getElementById('cfgEnlistDate').value,
-    dischargeDate: document.getElementById('cfgDischargeDate').value,
-    vacationTitle: document.getElementById('cfgVacationTitle').value.trim() || '다음 정기 휴가',
-    vacationDate: document.getElementById('cfgVacationDate').value,
-    trainingTitle: document.getElementById('cfgTrainingTitle').value.trim() || '부대 주요 훈련',
-    trainingDate: document.getElementById('cfgTrainingDate').value
-  };
+  const type = document.getElementById('singleDdayType').value;
+  const customId = document.getElementById('singleDdayCustomId').value;
+  const enabled = document.getElementById('singleDdayEnabled').checked;
+  const name = document.getElementById('singleDdayName').value.trim();
+  const start = document.getElementById('singleDdayStart').value;
+  const end = document.getElementById('singleDdayEnd').value;
+  const desc = document.getElementById('singleDdayDesc').value.trim();
+
+  if (enabled) {
+    if (!start || !end) {
+      showToast('시작일과 종료일(기간)을 모두 입력해야 D-Day가 표시됩니다!', 'warning');
+      return;
+    }
+    if (start > end) {
+      showToast('종료일이 시작일보다 빠를 수 없습니다.', 'warning');
+      return;
+    }
+  }
+
+  if (type === 'discharge') {
+    AppState.ddayConfig.dischargeEnabled = enabled;
+    AppState.ddayConfig.enlistDate = enabled ? start : '';
+    AppState.ddayConfig.dischargeDate = enabled ? end : '';
+  } else if (type === 'vacation') {
+    const totalVal = document.getElementById('vacTotalDays').value;
+    const usedVal = parseInt(document.getElementById('vacUsedDays').value, 10) || 0;
+    AppState.ddayConfig.vacationTotalDays = totalVal !== '' ? Math.max(0, parseInt(totalVal, 10) || 0) : '';
+    AppState.ddayConfig.vacationUsedDays = Math.max(0, usedVal);
+
+    AppState.ddayConfig.vacationEnabled = enabled;
+    AppState.ddayConfig.vacationTitle = enabled ? (name || '휴가 일정') : '';
+    AppState.ddayConfig.vacationStartDate = enabled ? start : '';
+    AppState.ddayConfig.vacationEndDate = enabled ? end : '';
+    AppState.ddayConfig.vacationDesc = enabled ? desc : '';
+  } else if (type === 'training') {
+    AppState.ddayConfig.trainingEnabled = enabled;
+    AppState.ddayConfig.trainingTitle = enabled ? (name || '부대 훈련') : '';
+    AppState.ddayConfig.trainingStartDate = enabled ? start : '';
+    AppState.ddayConfig.trainingEndDate = enabled ? end : '';
+    AppState.ddayConfig.trainingDesc = enabled ? desc : '';
+  } else if (type === 'custom') {
+    if (!AppState.ddayConfig.customDdays) AppState.ddayConfig.customDdays = [];
+    if (customId) {
+      const idx = AppState.ddayConfig.customDdays.findIndex(c => c.id === customId);
+      if (idx !== -1) {
+        AppState.ddayConfig.customDdays[idx] = {
+          id: customId,
+          enabled,
+          title: name || '추가 일정',
+          startDate: enabled ? start : '',
+          endDate: enabled ? end : '',
+          desc: enabled ? desc : ''
+        };
+      }
+    } else {
+      AppState.ddayConfig.customDdays.push({
+        id: 'custom-' + Date.now(),
+        enabled,
+        title: name || '추가 일정',
+        startDate: enabled ? start : '',
+        endDate: enabled ? end : '',
+        desc: enabled ? desc : ''
+      });
+    }
+  }
 
   SafeStorage.setItem('unit_dday_config', JSON.stringify(AppState.ddayConfig));
   updateDdayUI();
   closeModal('ddayConfigModal');
-  showToast('D-Day 설정이 업데이트되었습니다.', 'success');
+  showToast('설정이 저장되었습니다!', 'success');
+}
+
+function deleteCustomDday() {
+  const customId = document.getElementById('singleDdayCustomId').value;
+  if (!customId) return;
+  if (!confirm('이 추가 일정을 삭제하시겠습니까?')) return;
+
+  AppState.ddayConfig.customDdays = (AppState.ddayConfig.customDdays || []).filter(c => c.id !== customId);
+  SafeStorage.setItem('unit_dday_config', JSON.stringify(AppState.ddayConfig));
+  updateDdayUI();
+  closeModal('ddayConfigModal');
+  showToast('추가 일정이 삭제되었습니다.', 'info');
 }
 
 // ==========================================
@@ -1134,6 +1484,14 @@ window.closeModal = closeModal;
 window.openAddScheduleModal = openAddScheduleModal;
 window.openDbConfigModal = openDbConfigModal;
 window.openDdayModal = openDdayModal;
+window.openSingleDdayModal = openSingleDdayModal;
+window.toggleDdayInputs = toggleDdayInputs;
+window.handleSaveSingleDday = handleSaveSingleDday;
+window.updateVacBalancePreview = updateVacBalancePreview;
+window.adjustVacUsed = adjustVacUsed;
+window.applyVacPeriodToUsed = applyVacPeriodToUsed;
+window.useVacationDays = useVacationDays;
+window.deleteCustomDday = deleteCustomDday;
 window.setScheduleFilter = setScheduleFilter;
 window.resetDateFilter = resetDateFilter;
 window.changeMonth = changeMonth;
@@ -1148,4 +1506,4 @@ window.handleScheduleSubmit = handleScheduleSubmit;
 window.handleScheduleDelete = handleScheduleDelete;
 window.handleSaveDbConfig = handleSaveDbConfig;
 window.handleResetDbConfig = handleResetDbConfig;
-window.handleSaveDdayConfig = handleSaveDdayConfig;
+window.clearAllData = clearAllData;

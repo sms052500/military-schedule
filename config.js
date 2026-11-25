@@ -6,9 +6,9 @@
 
 window.SUPABASE_CONFIG = {
   // 예: "https://abcdefghijklmn.supabase.co"
-  SUPABASE_URL: "",
-  
-  // 예: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." (anon public key)
-  SUPABASE_ANON_KEY: ""
+  SUPABASE_URL: "https://mqbqjrhawxgfdfjuekve.supabase.co",
+
+  // 예: "sb_publishable_..." 또는 anon public key
+  SUPABASE_ANON_KEY: "sb_publishable_CQY8Iuj2SF0kanDhRbsLBg_WDAR-dDx"
 };
 
