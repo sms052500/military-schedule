@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인 및 부대 일정관리 체계 | 공개 메모장</title>
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%22><text y=%2222%22 font-size=%2220%22>🎖️</text></svg>">
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Supabase JS Client (로컬 파일 우선 로드, 없으면 CDN 대체) -->
+  <script src="supabase.js"></script>
+  <script>
+    if (!window.supabase) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="app" class="app-container">
+
+    <!-- 상단 헤더 바 -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="title-wrap">
+          <div class="sub-badge">MILITARY & PERSONAL HQ</div>
+          <h1 class="main-title">개인 및 부대 일정관리 체계</h1>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- 현재 시각 위젯 -->
+        <div class="clock-badge">
+          <i class="fa-regular fa-clock"></i>
+          <span id="liveClock">로딩중...</span>
+        </div>
+
+        <!-- Supabase 연동 상태 배지 (클릭 시 설정 팝업) -->
+        <button id="dbStatusBtn" class="status-btn status-disconnected" onclick="openDbConfigModal()"
+          title="클릭하여 Supabase 연동 설정">
+          <span class="status-dot"></span>
+          <span id="dbStatusText">로컬 데모 모드 (연결 설정)</span>
+          <i class="fa-solid fa-gear"></i>
+        </button>
+
+        <!-- D-Day 설정 버튼 -->
+        <button id="openDdaySettingsBtn" class="icon-btn" onclick="openDdayModal()" title="D-Day 날짜 설정">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Supabase 연동 안내 배너 (미연결 시 표시) -->
+    <div id="dbAlertBanner" class="alert-banner">
+      <div class="alert-content">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>현재 <strong>로컬 브라우저 저장 모드</strong>입니다. 다른 사람들과 실시간으로 메모와 일정을 공유하려면 <strong>Supabase를
+            연결</strong>해주세요!</span>
+      </div>
+      <button id="bannerConfigBtn" class="banner-action-btn" onclick="openDbConfigModal()">
+        <i class="fa-solid fa-plug"></i> 30초 만에 Supabase 연결하기
+      </button>
+    </div>
+
+    <!-- D-Day 대시보드 섹션 -->
+    <section class="dday-section">
+      <!-- 전역일 D-Day 카드 -->
+      <div class="dday-card military-dday-card">
+        <div class="card-header">
+          <span class="card-icon">🎖️</span>
+          <span class="card-title" id="dischargeTitle">국방부 시계 (전역일)</span>
+          <span class="dday-badge" id="dischargeBadge">D-Day 계산중</span>
+        </div>
+        <div class="card-body">
+          <div class="dday-count" id="dischargeDays">D-000</div>
+          <div class="progress-info">
+            <span class="progress-label">복무 달성률</span>
+            <span class="progress-percent" id="dischargePercent">0.0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="dischargeProgressBar" style="width: 0%"></div>
+          </div>
+          <div class="dday-subtext" id="dischargeDates">입대일: 2026.03.01 ~ 전역일: 2027.08.31</div>
+        </div>
+      </div>
+
+      <!-- 다음 휴가 D-Day 카드 -->
+      <div class="dday-card vacation-dday-card">
+        <div class="card-header">
+          <span class="card-icon">🏖️</span>
+          <span class="card-title" id="vacationTitle">다음 정기 휴가</span>
+          <span class="dday-badge badge-blue" id="vacationBadge">휴가 카운트</span>
+        </div>
+        <div class="card-body">
+          <div class="dday-count text-blue" id="vacationDays">D-10</div>
+          <p class="card-desc" id="vacationDesc">목표: 3박 4일 포상 & 정기휴가</p>
+          <div class="dday-subtext" id="vacationDates">예정일: 2026.12.05</div>
+        </div>
+      </div>
+
+      <!-- 주요 훈련 D-Day 카드 -->
+      <div class="dday-card training-dday-card">
+        <div class="card-header">
+          <span class="card-icon">🎯</span>
+          <span class="card-title" id="trainingTitle">부대 주요 훈련</span>
+          <span class="dday-badge badge-orange" id="trainingBadge">작전 카운트</span>
+        </div>
+        <div class="card-body">
+          <div class="dday-count text-orange" id="trainingDays">D-3</div>
+          <p class="card-desc" id="trainingDesc">대대 전술종합평가 훈련</p>
+          <div class="dday-subtext" id="trainingDates">예정일: 2026.11.28</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 메인 2단 그리드 컨텐츠 -->
+    <main class="main-grid">
+
+      <!-- [좌측] 일정 관리 센터 -->
+      <section class="schedule-section">
+        <div class="section-top">
+          <div class="section-title-wrap">
+            <h2 class="section-title"><i class="fa-solid fa-calendar-days"></i> 부대 & 개인 일정표</h2>
+            <span class="section-subtitle">작전, 훈련, 개인 휴가 및 당직 근무 통합 관리</span>
+          </div>
+          <button id="openAddScheduleModalBtn" class="btn btn-primary" onclick="openAddScheduleModal()">
+            <i class="fa-solid fa-plus"></i> 새 일정 등록
+          </button>
+        </div>
+
+        <!-- 필터 탭 -->
+        <div class="filter-tabs">
+          <button class="filter-btn active" data-filter="all" onclick="setScheduleFilter('all', this)">전체보기 (<span
+              id="countAll">0</span>)</button>
+          <button class="filter-btn" data-filter="unit" onclick="setScheduleFilter('unit', this)">🛡️ 부대일정 (<span
+              id="countUnit">0</span>)</button>
+          <button class="filter-btn" data-filter="personal" onclick="setScheduleFilter('personal', this)">👤 개인일정 (<span
+              id="countPersonal">0</span>)</button>
+          <button class="filter-btn" data-filter="vacation" onclick="setScheduleFilter('vacation', this)">🏖️ 휴가/외출
+            (<span id="countVacation">0</span>)</button>
+          <button class="filter-btn" data-filter="duty" onclick="setScheduleFilter('duty', this)">⏰ 당직/근무 (<span
+              id="countDuty">0</span>)</button>
+        </div>
+
+        <!-- 미니 캘린더 위젯 -->
+        <div class="mini-calendar-card">
+          <div class="calendar-header">
+            <button id="prevMonthBtn" class="cal-nav-btn" onclick="changeMonth(-1)"><i
+                class="fa-solid fa-chevron-left"></i></button>
+            <h3 id="calendarMonthYear" class="calendar-title">2026년 11월</h3>
+            <button id="nextMonthBtn" class="cal-nav-btn" onclick="changeMonth(1)"><i
+                class="fa-solid fa-chevron-right"></i></button>
+            <button id="todayBtn" class="today-reset-btn" onclick="goToday()">오늘</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span class="sun">일</span>
+            <span>월</span>
+            <span>화</span>
+            <span>수</span>
+            <span>목</span>
+            <span>금</span>
+            <span class="sat">토</span>
+          </div>
+          <div id="calendarDays" class="calendar-grid">
+            <!-- 자바스크립트로 날짜 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 선택된 날짜 및 일정 목록 -->
+        <div class="schedule-list-container">
+          <div class="schedule-list-header">
+            <span id="selectedDateTitle" class="selected-date-text">📌 전체 등록 일정 목록</span>
+            <button id="resetDateFilterBtn" class="text-link-btn" onclick="resetDateFilter()" style="display: none;">
+              <i class="fa-solid fa-rotate-left"></i> 전체 보기로 복원
+            </button>
+          </div>
+
+          <div id="scheduleList" class="schedule-items">
+            <!-- 자바스크립트로 동적 렌더링 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- [우측] 공개 메모장 (방명록 / 전우 & 지인 응원 공간) -->
+      <section class="memo-section">
+        <div class="section-top">
+          <div class="section-title-wrap">
+            <h2 class="section-title"><i class="fa-solid fa-envelope-open-text"></i> 공개 메모장 & 응원 보드</h2>
+            <span class="section-subtitle">사이트에 방문한 누구나 자유롭게 남기는 소통 공간</span>
+          </div>
+          <button id="refreshMemosBtn" class="btn btn-secondary icon-only" onclick="refreshMemos()" title="메모 새로고침">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <!-- 메모 작성 박스 -->
+        <div class="memo-form-card">
+          <form id="memoForm" onsubmit="handleMemoSubmit(event)">
+            <div class="form-row-2">
+              <div class="input-group">
+                <label for="memoAuthor"><i class="fa-solid fa-user"></i> 작성자 (이름/계급/소속)</label>
+                <input type="text" id="memoAuthor" placeholder="예: 3소대 김병장, 친구 영희" required maxlength="20">
+              </div>
+
+              <div class="input-group">
+                <label for="memoCategory"><i class="fa-solid fa-tag"></i> 구분 태그</label>
+                <select id="memoCategory">
+                  <option value="응원">💪 파이팅 & 응원</option>
+                  <option value="부대안내">📢 공지 & 부대안내</option>
+                  <option value="건의사항">💡 건의 & 질문</option>
+                  <option value="식단/일상">🍱 식단 & 일상</option>
+                  <option value="자유">💬 한줄 자유 메모</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="memoContent"><i class="fa-solid fa-pen"></i> 남길 메모 내용</label>
+              <textarea id="memoContent" rows="3" placeholder="접속하신 모든 분들이 볼 수 있습니다. 따뜻한 한마디나 필요한 메모를 남겨주세요!" required
+                maxlength="300"></textarea>
+              <div class="char-count"><span id="charNum">0</span>/300</div>
+            </div>
+
+            <!-- 이모지 & 색상 & 비밀번호 선택 바 -->
+            <div class="memo-options-row">
+              <div class="emoji-picker-wrap">
+                <span class="opt-label">이모지:</span>
+                <div class="emoji-options" id="emojiSelector">
+                  <span class="emoji-item active" data-emoji="💪" onclick="selectEmoji('💪', this)">💪</span>
+                  <span class="emoji-item" data-emoji="🎖️" onclick="selectEmoji('🎖️', this)">🎖️</span>
+                  <span class="emoji-item" data-emoji="🍕" onclick="selectEmoji('🍕', this)">🍕</span>
+                  <span class="emoji-item" data-emoji="☕" onclick="selectEmoji('☕', this)">☕</span>
+                  <span class="emoji-item" data-emoji="🔥" onclick="selectEmoji('🔥', this)">🔥</span>
+                  <span class="emoji-item" data-emoji="💌" onclick="selectEmoji('💌', this)">💌</span>
+                  <span class="emoji-item" data-emoji="⭐" onclick="selectEmoji('⭐', this)">⭐</span>
+                  <span class="emoji-item" data-emoji="🍀" onclick="selectEmoji('🍀', this)">🍀</span>
+                </div>
+              </div>
+
+              <div class="color-picker-wrap">
+                <span class="opt-label">포스트잇 색상:</span>
+                <div class="color-options" id="colorSelector">
+                  <span class="color-item color-yellow active" data-color="yellow" onclick="selectColor('yellow', this)"
+                    title="노랑"></span>
+                  <span class="color-item color-blue" data-color="blue" onclick="selectColor('blue', this)"
+                    title="블루"></span>
+                  <span class="color-item color-green" data-color="green" onclick="selectColor('green', this)"
+                    title="민트그린"></span>
+                  <span class="color-item color-purple" data-color="purple" onclick="selectColor('purple', this)"
+                    title="퍼플"></span>
+                  <span class="color-item color-pink" data-color="pink" onclick="selectColor('pink', this)"
+                    title="핑크"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-bottom-row">
+              <div class="password-group">
+                <input type="password" id="memoPassword" placeholder="삭제비번 4자리(선택)" maxlength="10">
+              </div>
+              <button type="submit" id="submitMemoBtn" class="btn btn-primary submit-btn">
+                <i class="fa-solid fa-paper-plane"></i> 메모 게시하기
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 실시간 메모 포스트잇 그리드 -->
+        <div class="memo-board-header">
+          <span class="memo-board-title">💬 전체 공개 메모 (<span id="memoCount">0</span>개)</span>
+          <span class="memo-live-indicator"><span class="pulse-dot"></span> 누구나 읽기/작성 가능</span>
+        </div>
+
+        <div id="memoGrid" class="memo-grid">
+          <!-- 자바스크립트로 메모 카드 렌더링 -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+      <div class="footer-content">
+        <p>🎖️ <strong>개인 및 부대 일정관리 체계</strong> | Supabase Database & Vercel Cloud 연동</p>
+        <p class="footer-sub">바이브코딩으로 제작된 대민/부대 공개형 풀스택 웹 애플리케이션</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ================= 모달 1: 새 일정 등록 모달 ================= -->
+  <div id="addScheduleModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-calendar-plus"></i> 새로운 일정 등록</h3>
+        <button class="modal-close-btn" id="closeAddScheduleModalBtn"
+          onclick="closeModal('addScheduleModal')">&times;</button>
+      </div>
+      <form id="scheduleForm" onsubmit="handleScheduleSubmit(event)">
+        <div class="modal-body">
+          <div class="input-group">
+            <label for="schedTitle">일정 제목 <span class="req">*</span></label>
+            <input type="text" id="schedTitle" placeholder="예: 중대 야간 사격훈련 / 정기 외박" required maxlength="50">
+          </div>
+
+          <div class="form-row-2">
+            <div class="input-group">
+              <label for="schedType">일정 분류 <span class="req">*</span></label>
+              <select id="schedType" required>
+                <option value="unit">🛡️ 부대 일정 (훈련, 점호, 검열)</option>
+                <option value="personal">👤 개인 일정 (자격증 시험, 면회)</option>
+                <option value="vacation">🏖️ 휴가 / 외출 / 외박</option>
+                <option value="duty">⏰ 당직 / 불침번 / 위병조장</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="schedPriority">중요도</label>
+              <select id="schedPriority">
+                <option value="normal">보통 (일반)</option>
+                <option value="important">중요 (강조)</option>
+                <option value="urgent">긴급 (최우선 작전)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="input-group">
+              <label for="schedStartDate">시작일 <span class="req">*</span></label>
+              <input type="date" id="schedStartDate" required>
+            </div>
+            <div class="input-group">
+              <label for="schedEndDate">종료일 (선택)</label>
+              <input type="date" id="schedEndDate">
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="schedLocation">장소 / 부서</label>
+            <input type="text" id="schedLocation" placeholder="예: 대연병장, 2사격장, 서울">
+          </div>
+
+          <div class="input-group">
+            <label for="schedMemo">상세 메모 / 준비사항</label>
+            <textarea id="schedMemo" rows="2" placeholder="준비물, 특이사항, 인원 현황 등"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelScheduleBtn"
+            onclick="closeModal('addScheduleModal')">취소</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> 일정 저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 모달 2: Supabase 연동 설정 모달 ================= -->
+  <div id="dbConfigModal" class="modal-overlay">
+    <div class="modal-box config-modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-database"></i> Supabase 실시간 데이터베이스 연동</h3>
+        <button class="modal-close-btn" id="closeDbConfigModalBtn"
+          onclick="closeModal('dbConfigModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="config-guide-card">
+          <h4><i class="fa-solid fa-lightbulb"></i> 어디서 값을 찾나요?</h4>
+          <ol>
+            <li><strong>supabase.com</strong> 로그인 후 프로젝트 생성</li>
+            <li>왼쪽 메뉴 맨 아래 <strong>Project Settings (⚙️ 설정)</strong> 클릭</li>
+            <li><strong>Data API</strong> (또는 API) 메뉴 클릭</li>
+            <li><strong>Project URL</strong>과 <strong>Project API Keys (anon, public)</strong>를 복사하세요.</li>
+          </ol>
+        </div>
+
+        <div class="input-group">
+          <label for="cfgSupabaseUrl">Supabase Project URL</label>
+          <input type="url" id="cfgSupabaseUrl" placeholder="https://xxxxxxxxxxxxxxxxxxxx.supabase.co">
+        </div>
+
+        <div class="input-group">
+          <label for="cfgSupabaseKey">Supabase Anon Public API Key</label>
+          <input type="password" id="cfgSupabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+          <small class="help-text">공개용 anon 키는 브라우저에서 안전하게 작동하도록 설계되어 있습니다.</small>
+        </div>
+
+        <div id="testConnResult" class="test-conn-result" style="display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="resetDbConfigBtn" onclick="handleResetDbConfig()">로컬 모드로
+          초기화</button>
+        <button type="button" class="btn btn-primary" id="saveDbConfigBtn" onclick="handleSaveDbConfig()">
+          <i class="fa-solid fa-link"></i> 연동 테스트 및 저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 모달 3: D-Day 설정 모달 ================= -->
+  <div id="ddayConfigModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sliders"></i> D-Day 날짜 설정</h3>
+        <button class="modal-close-btn" id="closeDdayConfigModalBtn"
+          onclick="closeModal('ddayConfigModal')">&times;</button>
+      </div>
+      <form id="ddayConfigForm" onsubmit="handleSaveDdayConfig(event)">
+        <div class="modal-body">
+          <h4 class="sub-heading">🎖️ 전역일 (국방부 시계) 설정</h4>
+          <div class="form-row-2">
+            <div class="input-group">
+              <label for="cfgEnlistDate">입대일</label>
+              <input type="date" id="cfgEnlistDate" required>
+            </div>
+            <div class="input-group">
+              <label for="cfgDischargeDate">전역일</label>
+              <input type="date" id="cfgDischargeDate" required>
+            </div>
+          </div>
+
+          <h4 class="sub-heading mt-4">🏖️ 다음 휴가 설정</h4>
+          <div class="form-row-2">
+            <div class="input-group">
+              <label for="cfgVacationTitle">휴가 명칭</label>
+              <input type="text" id="cfgVacationTitle" placeholder="예: 1차 정기휴가">
+            </div>
+            <div class="input-group">
+              <label for="cfgVacationDate">휴가 시작일</label>
+              <input type="date" id="cfgVacationDate">
+            </div>
+          </div>
+
+          <h4 class="sub-heading mt-4">🎯 주요 훈련 설정</h4>
+          <div class="form-row-2">
+            <div class="input-group">
+              <label for="cfgTrainingTitle">훈련 명칭</label>
+              <input type="text" id="cfgTrainingTitle" placeholder="예: 혹한기 훈련">
+            </div>
+            <div class="input-group">
+              <label for="cfgTrainingDate">훈련 시작일</label>
+              <input type="date" id="cfgTrainingDate">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelDdayConfigBtn"
+            onclick="closeModal('ddayConfigModal')">닫기</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> 저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 토스트 알림창 -->
+  <div id="toast" class="toast-container"></div>
+
+  <!-- 설정 파일 및 앱 스크립트 로드 -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
